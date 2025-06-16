@@ -134,4 +134,19 @@ class CourseControllerTest {
         verify(courseRepository).findById(courseId);
         verify(courseRepository).save(existingCourse);
     }
+
+    @Test
+    @DisplayName("Deve deletar um curso quando o delete() é chamado")
+    void delete() {
+        Course curso = new Course();
+        curso.setId(1L);
+        curso.setName("Java Avançado");
+        curso.setCategory("backend");
+
+        when(courseRepository.findById(curso.getId())).thenReturn(Optional.of(curso));
+
+        ResponseEntity<Void> response = controller.delete(curso.getId());
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
 }
