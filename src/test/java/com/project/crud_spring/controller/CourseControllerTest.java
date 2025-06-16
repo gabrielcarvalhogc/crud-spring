@@ -9,10 +9,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +31,7 @@ class CourseControllerTest {
 
     @BeforeEach
     void setUp() {
+
     }
 
     @Test
@@ -55,6 +61,22 @@ class CourseControllerTest {
     }
 
     @Test
+    @DisplayName("Deve retornar 1 curso com sucesso quando o id existe e erro 404 quando não existe")
+    void findById() {
+        Course curso1 = new Course();
+        curso1.setId(1L);
+        curso1.setName("Java Básico");
+        curso1.setCategory("backend");
+
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(curso1));
+
+        assertThat(controller.findById(1L)).isEqualTo(ResponseEntity.ok().body(curso1));
+        assertThat(controller.findById(2L)).isEqualTo(ResponseEntity.notFound().build());
+
+        verify(courseRepository, times(1)).findById(1L);
+    }
+
+    @Test
     @DisplayName("deve criar um novo curso quando o método create() é chamado")
     void create() {
         // Arrange (Dado)
@@ -79,5 +101,37 @@ class CourseControllerTest {
         assertThat(resultado.getCategory()).isEqualTo("backend");
 
         verify(courseRepository, times(1)).save(novoCurso);
+    }
+
+    @Test
+    @DisplayName("Deve alterar os dados de um curso quando o update() é chamado")
+    void update() {
+        Long courseId = 1L;
+        Course existingCourse = new Course();
+        existingCourse.setId(courseId);
+        existingCourse.setName("Old Name");
+        existingCourse.setCategory("Old Category");
+
+        Course updateData = new Course();
+        updateData.setName("New Name");
+        updateData.setCategory("New Category");
+
+        Course updatedCourse = new Course();
+        updatedCourse.setId(courseId);
+        updatedCourse.setName("New Name");
+        updatedCourse.setCategory("New Category");
+
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(existingCourse));
+        when(courseRepository.save(existingCourse)).thenReturn(updatedCourse);
+
+        ResponseEntity<Course> response = controller.update(courseId, updateData);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("New Name", response.getBody().getName());
+        assertEquals("New Category", response.getBody().getCategory());
+
+        verify(courseRepository).findById(courseId);
+        verify(courseRepository).save(existingCourse);
     }
 }
