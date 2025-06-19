@@ -1,5 +1,6 @@
 package com.project.crud_spring.service;
 
+import com.project.crud_spring.exception.RecordNotFoundException;
 import com.project.crud_spring.model.Course;
 import com.project.crud_spring.repository.CourseRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,12 +64,26 @@ class CourseServiceTest {
     void findById() {
         when(courseRepository.findById(1L)).thenReturn(Optional.ofNullable(cursoJava));
 
-        Optional<Course> result = courseService.findById(1L);
+        Course result = courseService.findById(1L);
 
-        assertEquals("Java", result.get().getName());
-        assertEquals("Back-end", result.get().getCategory());
+        assertEquals("Java", result.getName());
+        assertEquals("Back-end", result.getCategory());
 
         verify(courseRepository).findById(1L);
+    }
+
+    @Test
+    @DisplayName("Should return an exception when doesn't find an id course")
+    void findByIdException() {
+        when(courseRepository.findById(1L)).thenReturn(Optional.empty());
+
+        RecordNotFoundException ex = assertThrows(
+                RecordNotFoundException.class,
+                () -> courseService.findById(1L)
+        );
+
+        assertTrue(ex.getMessage().contains("1"));
+        verify(courseRepository, times(1)).findById(1L);
     }
 
     @Test
@@ -91,10 +106,10 @@ class CourseServiceTest {
         when(courseRepository.findById(2L)).thenReturn(Optional.ofNullable(cursoSpring));
         when(courseRepository.save(cursoSpring)).thenReturn(cursoSpring);
 
-        Optional<Course> result = courseService.update(2L, cursoSpring);
+        Course result = courseService.update(2L, cursoSpring);
 
-        assertEquals("Spring Boot", result.get().getName());
-        assertEquals("Back-end", result.get().getCategory());
+        assertEquals("Spring Boot", result.getName());
+        assertEquals("Back-end", result.getCategory());
 
         verify(courseRepository).findById(2L);
         verify(courseRepository).save(cursoSpring);
@@ -105,10 +120,8 @@ class CourseServiceTest {
     void delete() {
         when(courseRepository.findById(2L)).thenReturn(Optional.ofNullable(cursoSpring));
 
-        Boolean result = courseService.delete(2L);
+        courseService.delete(2L);
 
-        assertEquals(true, result);
-
-        verify(courseRepository).findById(2L);
+        verify(courseRepository, times(1)).findById(2L);
     }
 }

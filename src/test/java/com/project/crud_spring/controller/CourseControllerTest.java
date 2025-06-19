@@ -9,15 +9,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,10 +55,12 @@ class CourseControllerTest {
     @Test
     @DisplayName("Should return a course when it has an id and error when it doesn't")
     void findById() {
-        when(courseService.findById(1L)).thenReturn(Optional.of(cursoJava));
+        when(courseService.findById(1L)).thenReturn(cursoJava);
 
-        assertThat(controller.findById(1L)).isEqualTo(ResponseEntity.ok().body(cursoJava));
-        assertThat(controller.findById(2L)).isEqualTo(ResponseEntity.notFound().build());
+        Course result = controller.findById(1L);
+
+        assertEquals("Java Básico", result.getName());
+        assertEquals("Back-end", result.getCategory());
     }
 
     @Test
@@ -90,24 +88,11 @@ class CourseControllerTest {
     @Test
     @DisplayName("Should update the data of a course when update is called")
     void update() {
-        when(courseService.update(cursoSpring.getId(), cursoJava)).thenReturn(Optional.of(cursoJava));
+        when(courseService.update(cursoSpring.getId(), cursoJava)).thenReturn(cursoJava);
 
-        ResponseEntity<Course> response = controller.update(cursoSpring.getId(), cursoJava);
+        Course response = controller.update(cursoSpring.getId(), cursoJava);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertThat(response).isEqualTo(ResponseEntity.ok().body(cursoJava));
-        assertNotNull(response.getBody());
-        assertEquals("Java Básico", response.getBody().getName());
-        assertEquals("Back-end", response.getBody().getCategory());
-    }
-
-    @Test
-    @DisplayName("Should delete a course when delete is called")
-    void delete() {
-        when(courseService.delete(cursoJava.getId())).thenReturn(true);
-
-        ResponseEntity<Void> response = controller.delete(cursoJava.getId());
-
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals("Java Básico", response.getName());
+        assertEquals("Back-end", response.getCategory());
     }
 }
