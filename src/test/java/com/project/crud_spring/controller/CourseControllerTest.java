@@ -1,7 +1,7 @@
 package com.project.crud_spring.controller;
 
 import com.project.crud_spring.model.Course;
-import com.project.crud_spring.repository.CourseRepository;
+import com.project.crud_spring.service.CourseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,62 +24,50 @@ import static org.mockito.Mockito.*;
 class CourseControllerTest {
 
     @Mock
-    private CourseRepository courseRepository;
+    private CourseService courseService;
 
     @InjectMocks
     private CourseController controller;
 
+    private Course cursoJava;
+    private Course cursoSpring;
     @BeforeEach
     void setUp() {
+        cursoJava = new Course();
+        cursoJava.setId(1L);
+        cursoJava.setName("Java Básico");
+        cursoJava.setCategory("Back-end");
 
+        cursoSpring = new Course();
+        cursoSpring.setId(2L);
+        cursoSpring.setName("Spring Boot");
+        cursoSpring.setCategory("Back-end");
     }
 
     @Test
-    @DisplayName("Deve retornar todos os cursos quando List() é chamado")
+    @DisplayName("Should return a list of courses when list() is called")
     void list() {
-        Course curso1 = new Course();
-        curso1.setId(1L);
-        curso1.setName("Java Básico");
-        curso1.setCategory("backend");
+        List<Course> cursosEsperados = List.of(cursoJava, cursoSpring);
 
-        Course curso2 = new Course();
-        curso2.setId(2L);
-        curso2.setName("Spring Boot");
-        curso2.setCategory("backend");
-
-        List<Course> cursosEsperados = List.of(curso1, curso2);
-
-        when(courseRepository.findAll()).thenReturn(cursosEsperados);
+        when(courseService.list()).thenReturn(cursosEsperados);
 
         List<Course> resultado = controller.list();
 
         assertThat(resultado).isNotNull().hasSize(2).containsExactlyElementsOf(cursosEsperados);
-
-        verify(courseRepository, times(1)).findAll();
-        verifyNoMoreInteractions(courseRepository);
-
     }
 
     @Test
-    @DisplayName("Deve retornar 1 curso com sucesso quando o id existe e erro 404 quando não existe")
+    @DisplayName("Should return a course when it has an id and error when it doesn't")
     void findById() {
-        Course curso1 = new Course();
-        curso1.setId(1L);
-        curso1.setName("Java Básico");
-        curso1.setCategory("backend");
+        when(courseService.findById(1L)).thenReturn(Optional.of(cursoJava));
 
-        when(courseRepository.findById(1L)).thenReturn(Optional.of(curso1));
-
-        assertThat(controller.findById(1L)).isEqualTo(ResponseEntity.ok().body(curso1));
+        assertThat(controller.findById(1L)).isEqualTo(ResponseEntity.ok().body(cursoJava));
         assertThat(controller.findById(2L)).isEqualTo(ResponseEntity.notFound().build());
-
-        verify(courseRepository, times(1)).findById(1L);
     }
 
     @Test
-    @DisplayName("deve criar um novo curso quando o método create() é chamado")
+    @DisplayName("Should create a course when method create is called")
     void create() {
-        // Arrange (Dado)
         Course novoCurso = new Course();
         novoCurso.setName("Java Avançado");
         novoCurso.setCategory("backend");
@@ -89,63 +77,36 @@ class CourseControllerTest {
         cursoSalvo.setName("Java Avançado");
         cursoSalvo.setCategory("backend");
 
-        when(courseRepository.save(novoCurso)).thenReturn(cursoSalvo);
+        when(courseService.create(cursoJava)).thenReturn(cursoJava);
 
-        // Act (Quando)
-        Course resultado = controller.create(novoCurso);
+        Course resultado = controller.create(cursoJava);
 
-        // Assert (Então)
         assertThat(resultado).isNotNull();
         assertThat(resultado.getId()).isEqualTo(1L);
-        assertThat(resultado.getName()).isEqualTo("Java Avançado");
-        assertThat(resultado.getCategory()).isEqualTo("backend");
-
-        verify(courseRepository, times(1)).save(novoCurso);
+        assertThat(resultado.getName()).isEqualTo("Java Básico");
+        assertThat(resultado.getCategory()).isEqualTo("Back-end");
     }
 
     @Test
-    @DisplayName("Deve alterar os dados de um curso quando o update() é chamado")
+    @DisplayName("Should update the data of a course when update is called")
     void update() {
-        Long courseId = 1L;
-        Course existingCourse = new Course();
-        existingCourse.setId(courseId);
-        existingCourse.setName("Old Name");
-        existingCourse.setCategory("Old Category");
+        when(courseService.update(cursoSpring.getId(), cursoJava)).thenReturn(Optional.of(cursoJava));
 
-        Course updateData = new Course();
-        updateData.setName("New Name");
-        updateData.setCategory("New Category");
-
-        Course updatedCourse = new Course();
-        updatedCourse.setId(courseId);
-        updatedCourse.setName("New Name");
-        updatedCourse.setCategory("New Category");
-
-        when(courseRepository.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(courseRepository.save(existingCourse)).thenReturn(updatedCourse);
-
-        ResponseEntity<Course> response = controller.update(courseId, updateData);
+        ResponseEntity<Course> response = controller.update(cursoSpring.getId(), cursoJava);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertThat(response).isEqualTo(ResponseEntity.ok().body(cursoJava));
         assertNotNull(response.getBody());
-        assertEquals("New Name", response.getBody().getName());
-        assertEquals("New Category", response.getBody().getCategory());
-
-        verify(courseRepository).findById(courseId);
-        verify(courseRepository).save(existingCourse);
+        assertEquals("Java Básico", response.getBody().getName());
+        assertEquals("Back-end", response.getBody().getCategory());
     }
 
     @Test
-    @DisplayName("Deve deletar um curso quando o delete() é chamado")
+    @DisplayName("Should delete a course when delete is called")
     void delete() {
-        Course curso = new Course();
-        curso.setId(1L);
-        curso.setName("Java Avançado");
-        curso.setCategory("backend");
+        when(courseService.delete(cursoJava.getId())).thenReturn(true);
 
-        when(courseRepository.findById(curso.getId())).thenReturn(Optional.of(curso));
-
-        ResponseEntity<Void> response = controller.delete(curso.getId());
+        ResponseEntity<Void> response = controller.delete(cursoJava.getId());
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
