@@ -1,19 +1,18 @@
 package com.project.crud_spring.controller;
 
-import com.project.crud_spring.model.Course;
+import com.project.crud_spring.dto.CourseDTO;
+import com.project.crud_spring.exception.RecordNotFoundException;
 import com.project.crud_spring.service.CourseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,77 +21,88 @@ class CourseControllerTest {
     @Mock
     private CourseService courseService;
 
-    @InjectMocks
     private CourseController controller;
 
-    private Course cursoJava;
-    private Course cursoSpring;
     @BeforeEach
     void setUp() {
-        cursoJava = new Course();
-        cursoJava.setId(1L);
-        cursoJava.setName("Java Básico");
-        cursoJava.setCategory("Back-end");
-
-        cursoSpring = new Course();
-        cursoSpring.setId(2L);
-        cursoSpring.setName("Spring Boot");
-        cursoSpring.setCategory("Back-end");
+        controller = new CourseController(courseService);
     }
 
     @Test
     @DisplayName("Should return a list of courses when list() is called")
     void list() {
-        List<Course> cursosEsperados = List.of(cursoJava, cursoSpring);
+        CourseDTO c1 = new CourseDTO(1L, "Java Básico", "Back-end");
+        CourseDTO c2 = new CourseDTO(2L, "Angular", "Front-end");
+        when(courseService.list()).thenReturn(List.of(c1, c2));
 
-        when(courseService.list()).thenReturn(cursosEsperados);
+        List<CourseDTO> result = controller.list();
 
-        List<Course> resultado = controller.list();
-
-        assertThat(resultado).isNotNull().hasSize(2).containsExactlyElementsOf(cursosEsperados);
+        assertEquals(2, result.size());
+        assertSame(c1, result.get(0));
+        assertSame(c2, result.get(1));
+        verify(courseService).list();
     }
 
     @Test
     @DisplayName("Should return a course when it has an id and error when it doesn't")
     void findById() {
-        when(courseService.findById(1L)).thenReturn(cursoJava);
+        CourseDTO dto = new CourseDTO(1L, "Java", "Back-end");
+        when(courseService.findById(1L)).thenReturn(dto);
 
-        Course result = controller.findById(1L);
+        CourseDTO result = controller.findById(1L);
 
-        assertEquals("Java Básico", result.getName());
-        assertEquals("Back-end", result.getCategory());
+        assertEquals(dto, result);
+        verify(courseService).findById(1L);
+    }
+
+    @Test
+    @DisplayName("findById method should throw an error when id doesn't exist")
+    void findByIdShouldThrowWhenNotFound() {
+        when(courseService.findById(99L)).thenThrow(new RecordNotFoundException(99L));
+
+        assertThrows(RecordNotFoundException.class, () -> controller.findById(99L));
+        verify(courseService).findById(99L);
     }
 
     @Test
     @DisplayName("Should create a course when method create is called")
     void create() {
-        Course novoCurso = new Course();
-        novoCurso.setName("Java Avançado");
-        novoCurso.setCategory("backend");
+        CourseDTO input = new CourseDTO(null, "Spring Boot", "Back-end");
+        CourseDTO created = new CourseDTO(3L, "Spring Boot", "Back-end");
+        when(courseService.create(input)).thenReturn(created);
 
-        Course cursoSalvo = new Course();
-        cursoSalvo.setId(1L);
-        cursoSalvo.setName("Java Avançado");
-        cursoSalvo.setCategory("backend");
+        CourseDTO result = controller.create(input);
 
-        when(courseService.create(cursoJava)).thenReturn(cursoJava);
-
-        Course resultado = controller.create(cursoJava);
-
-        assertThat(resultado).isNotNull();
-        assertThat(resultado.getId()).isEqualTo(1L);
-        assertThat(resultado.getName()).isEqualTo("Java Básico");
-        assertThat(resultado.getCategory()).isEqualTo("Back-end");
+        assertEquals(created, result);
+        verify(courseService).create(input);
     }
 
     @Test
     @DisplayName("Should update the data of a course when update is called")
     void update() {
-        when(courseService.update(cursoSpring.getId(), cursoJava)).thenReturn(cursoJava);
+        CourseDTO input = new CourseDTO(null, "Java Avançado", "Back-end");
+        CourseDTO updated = new CourseDTO(1L, "Java Avançado", "Back-end");
+        when(courseService.update(1L, input)).thenReturn(updated);
 
-        Course response = controller.update(cursoSpring.getId(), cursoJava);
+        CourseDTO result = controller.update(1L, input);
 
-        assertEquals("Java Básico", response.getName());
-        assertEquals("Back-end", response.getCategory());
+        assertEquals(updated, result);
+        verify(courseService).update(1L, input);
+    }
+
+    @Test
+    @DisplayName("Delete method should call service")
+    void deleteShouldCallServiceAndDoNothingWhenExists() {
+        assertDoesNotThrow(() -> controller.delete(1L));
+        verify(courseService).delete(1L);
+    }
+
+    @Test
+    @DisplayName("Delete method should throw an error when id doesn't exist")
+    void deleteShouldThrowWhenNotFound() {
+        doThrow(new RecordNotFoundException(42L)).when(courseService).delete(42L);
+
+        assertThrows(RecordNotFoundException.class, () -> controller.delete(42L));
+        verify(courseService).delete(42L);
     }
 }

@@ -1,5 +1,7 @@
 package com.project.crud_spring.service;
 
+import com.project.crud_spring.dto.CourseDTO;
+import com.project.crud_spring.dto.mapper.CourseMapper;
 import com.project.crud_spring.exception.RecordNotFoundException;
 import com.project.crud_spring.model.Course;
 import com.project.crud_spring.repository.CourseRepository;
@@ -7,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,52 +25,52 @@ class CourseServiceTest {
     @Mock
     private CourseRepository courseRepository;
 
-    @InjectMocks
     private CourseService courseService;
+    private CourseMapper courseMapper;
 
     private Course cursoJava;
     private Course cursoSpring;
-
+    private CourseDTO cursoJavaDTO;
+    private CourseDTO cursoSpringDTO;
     @BeforeEach
     void setup() {
+        courseMapper = new CourseMapper();
+        courseService = new CourseService(courseRepository, courseMapper);
+
         cursoJava = new Course();
         cursoJava.setId(1L);
         cursoJava.setName("Java");
         cursoJava.setCategory("Back-end");
-        cursoJava.setStatus("Ativo");
 
         cursoSpring = new Course();
         cursoSpring.setId(2L);
         cursoSpring.setName("Spring Boot");
         cursoSpring.setCategory("Back-end");
-        cursoSpring.setStatus("Ativo");
+
+        cursoJavaDTO = courseMapper.toDto(cursoJava);
+        cursoSpringDTO = courseMapper.toDto(cursoSpring);
     }
 
     @Test
     @DisplayName("Should return a list of all courses")
     void list() {
-        List<Course> coursesMock = List.of(cursoJava, cursoSpring);
-        when(courseRepository.findAll()).thenReturn(coursesMock);
+        when(courseRepository.findAll()).thenReturn(List.of(cursoJava, cursoSpring));
 
-        List<Course> result = courseService.list();
+        List<CourseDTO> result = courseService.list();
 
         assertEquals(2, result.size());
-        assertEquals("Java", result.getFirst().getName());
-        assertEquals("Spring Boot", result.get(1).getName());
-
+        assertTrue(result.containsAll(List.of(cursoJavaDTO, cursoSpringDTO)));
         verify(courseRepository).findAll();
     }
 
     @Test
     @DisplayName("Should find a course by id and return it")
     void findById() {
-        when(courseRepository.findById(1L)).thenReturn(Optional.ofNullable(cursoJava));
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(cursoJava));
 
-        Course result = courseService.findById(1L);
+        CourseDTO result = courseService.findById(1L);
 
-        assertEquals("Java", result.getName());
-        assertEquals("Back-end", result.getCategory());
-
+        assertEquals(cursoJavaDTO, result);
         verify(courseRepository).findById(1L);
     }
 
@@ -87,41 +89,66 @@ class CourseServiceTest {
     }
 
     @Test
-    @DisplayName("Should create a course with name, category and status=ativo")
+    @DisplayName("Should create a course with name and category")
     void create() {
-        when(courseRepository.save(cursoJava)).thenReturn(cursoJava);
+        CourseDTO inputDto = new CourseDTO(null, "Spring Boot", "Back-end");
+        Course saved = new Course();
+        saved.setId(3L);
+        saved.setName("React");
+        saved.setCategory("Front=end");
+        CourseDTO savedDto = courseMapper.toDto(saved);
 
-        Course result = courseService.create(cursoJava);
+        when(courseRepository.save(any(Course.class))).thenReturn(saved);
 
-        assertEquals("Java", result.getName());
-        assertEquals("Back-end", result.getCategory());
-        assertEquals("Ativo", result.getStatus());
+        CourseDTO result = courseService.create(inputDto);
 
-        verify(courseRepository).save(cursoJava);
+        assertEquals(savedDto, result);
+        ArgumentCaptor<Course> captor = ArgumentCaptor.forClass(Course.class);
+        verify(courseRepository).save(captor.capture());
+        assertEquals("React", savedDto.name());
     }
 
     @Test
     @DisplayName("Should update a course")
     void update() {
-        when(courseRepository.findById(2L)).thenReturn(Optional.ofNullable(cursoSpring));
-        when(courseRepository.save(cursoSpring)).thenReturn(cursoSpring);
+        CourseDTO updateDto = new CourseDTO(null, "Java Intermediário", "Back-end");
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(cursoJava));
+        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Course result = courseService.update(2L, cursoSpring);
+        CourseDTO result = courseService.update(1L, updateDto);
 
-        assertEquals("Spring Boot", result.getName());
-        assertEquals("Back-end", result.getCategory());
+        assertEquals("Java Intermediário", result.name());
+        verify(courseRepository).findById(1L);
+        verify(courseRepository).save(cursoJava);
+    }
 
-        verify(courseRepository).findById(2L);
-        verify(courseRepository).save(cursoSpring);
+    @Test
+    @DisplayName("Should throw RecordNotFoundException when update course id doesn't exist")
+    void shouldThrowWhenUpdateNotFound() {
+        CourseDTO updateDto = new CourseDTO(null, "X", "Cat");
+        when(courseRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(RecordNotFoundException.class, () -> courseService.update(999L, updateDto));
+        verify(courseRepository).findById(999L);
     }
 
     @Test
     @DisplayName("Should delete a course by id")
     void delete() {
-        when(courseRepository.findById(2L)).thenReturn(Optional.ofNullable(cursoSpring));
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(cursoSpring));
 
-        courseService.delete(2L);
+        courseService.delete(1L);
 
-        verify(courseRepository, times(1)).findById(2L);
+        verify(courseRepository).findById(1L);
+        verify(courseRepository).delete(cursoSpring);
+    }
+
+    @Test
+    @DisplayName("Should throw RecordNotFoundException when delete course id doesn't exist")
+    void shouldThrowWhenDeleteNotFound() {
+        when(courseRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(RecordNotFoundException.class, () -> courseService.delete(999L));
+        verify(courseRepository).findById(999L);
     }
 }
