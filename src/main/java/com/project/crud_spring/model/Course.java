@@ -1,6 +1,10 @@
 package com.project.crud_spring.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.project.crud_spring.enuns.Category;
+import com.project.crud_spring.enuns.Status;
+import com.project.crud_spring.enuns.converters.CategoryConverter;
+import com.project.crud_spring.enuns.converters.StatusConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,12 +32,12 @@ public class Course {
     private String name;
 
     @NotNull
-    @Length(max = 12)
     @Column(name = "category", length = 12 , nullable = false)
-    private String category;
+    @Convert(converter = CategoryConverter.class)
+    private Category category;
 
     @NotNull
-    @Length(max = 12)
     @Column(name = "status", length = 12 , nullable = false)
-    private String status = "Ativo";
+    @Convert(converter = StatusConverter.class)
+    private Status status = Status.ACTIVE;
 }
